@@ -1,0 +1,115 @@
+---
+title: "Análisis Ecobici"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Ecobici
+
+
+```{r Librerias, warning=FALSE}
+
+rm(list = ls()) 
+
+###########################################################################################################################################################################
+# Instalamos librerías de trabajo
+
+for( package in c("datasets", "shinydashboard", "DT", "lubridate","kableExtra","tidyverse", "plotly")) {
+  
+  if (!require(package, character.only = T, quietly = T)) {
+    install.packages(package, repos = "http://cran.us.r-project.org")
+    library(package, character.only = T)
+  }
+}
+
+
+
+###########################################################################################################################################################################
+
+```
+
+## Descarga y Limpieza
+
+```{r DyL}
+
+
+############################################################################################################################################################
+#leemos archivo de trabajo (PARTIDAS)
+
+data <- read.csv("partidas2023.csv", encoding = "UTF-8")
+
+
+teamname <- "FNATIC"
+
+team <- data %>% 
+  filter(Team.1.Name == teamname |Team.2.Name == teamname ) %>% 
+  mutate("win" = if_else(Team.1.Score > Team.2.Score,Team.1.Name,Team.2.Name),
+         "Resultado" = case_when(win == teamname ~"Victoria",
+                                 TRUE ~ "Derrota"),
+         "Compo"= if_else(Team.1.Name == teamname,Team.1.Agents,Team.2.Agents)) %>% 
+  separate(Compo,c("1","2","3","4","5"),",")
+
+
+data2 <- data %>% 
+  head(5)
+
+
+
+
+```
+
+
+
+```{r, warning=FALSE}
+Tabla_1 <- team %>% 
+  select(Map.Name,Resultado) %>% 
+  group_by(Map.Name,Resultado) %>% 
+  summarise(Total = n()) %>% 
+  mutate(Porcentaje = round(Total/sum(Total)*100,1)) %>% 
+  mutate(Etiqueta = paste0(Total, " (% ", Porcentaje, ")"))
+
+ggplot(Tabla_1, aes(x = Map.Name , y = Total, fill = Resultado ))+
+  geom_bar(stat = "identity", width = 0.5)+
+  geom_text(aes(label = Etiqueta), position = position_stack(vjust = 0.5),
+            color = case_when(
+              Tabla_1$Resultado == "Victoria" ~ "black",
+              Tabla_1$Resultado == "Derrota" ~ "white",
+              Tabla_1$Resultado == "Tablas" ~ "#ada9a9",
+            ))+
+  scale_fill_manual(values = c("#272643", "#e3f6f5", "#2c698d"))+
+    labs(title = paste0("Resumen resultados totales ", teamname),
+       subtitle = "",
+       caption = "Fuente: API Lichess",
+       x = "",
+       y = "")+
+  theme_minimal()+
+  theme(text = element_text(family = "Decima WE", color = "grey20"),
+        plot.title = element_text(family = "Times New Roman", hjust = 0.5, vjust = 0.5),
+        plot.subtitle = element_text( hjust = 0.5, vjust = 0.5),
+        legend.position = "bottom",
+        legend.title = element_blank())+
+  guides(fill = guide_legend(reverse = TRUE))+
+  coord_flip()
+```
+
+
+```{r, warning=FALSE}
+
+
+Tabla_2 <- team %>% 
+  select(Map.Name,Resultado,"1","2","3","4","5" )
+
+
+kbl(Tabla_2) %>%
+  kable_material_dark()
+
+```
+
+
+
+
+
+
